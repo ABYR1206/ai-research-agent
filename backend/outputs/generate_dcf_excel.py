@@ -200,13 +200,15 @@ def _autosize(ws: Worksheet, min_w: int = 12, max_w: int = 30):
     """
     from openpyxl.cell.cell import MergedCell
 
-    # 每种 number_format 在最坏情况下需要的字符数（含千分位/$/%/括号红字）
+    # 每种 number_format 在最坏情况下需要的字符数。
+    # 注意：openpyxl 的 width 单位 ≠ 纯字符数；加粗字体在 Excel 中实际
+    # 占用更多像素。下列估算已包含负数红字括号和加粗 padding（×1.4 安全系数）。
     NF_MIN_WIDTH = {
-        FMT_MONEY: 15,    # "1,813,239.0" + 括号红字预留
-        FMT_PRICE: 13,    # "$1,234,567.89"
-        FMT_PCT: 9,       # "-123.4%"
-        FMT_INT: 13,
-        FMT_FACTOR: 8,    # "0.9999"
+        FMT_MONEY: 20,    # "(1,813,239.0)" 加粗后约 20 单位
+        FMT_PRICE: 16,    # "$1,234,567.89"
+        FMT_PCT: 12,      # "(123.4%)"
+        FMT_INT: 16,
+        FMT_FACTOR: 11,   # "0.9999" + padding
     }
 
     widths: dict[str, int] = {}
@@ -460,7 +462,7 @@ def _build_historical(wb: Workbook, historical: dict):
             else:
                 _formula(ws, r, 2 + i, f, fmt)
 
-    _autosize(ws, min_w=14, max_w=22)
+    _autosize(ws, min_w=15, max_w=28)
     ws.column_dimensions["A"].width = 24
     ws.freeze_panes = "B4"
 
@@ -548,8 +550,8 @@ def _build_forecast(wb: Workbook, historical: dict, assumptions: dict):
     for col_idx in range(1, 3 + n):
         ws.cell(row=R_FCF + 1, column=col_idx).border = BORDER_TOP
 
-    _autosize(ws, min_w=14, max_w=20)
-    ws.column_dimensions["A"].width = 24
+    _autosize(ws, min_w=16, max_w=28)
+    ws.column_dimensions["A"].width = 26
     ws.freeze_panes = "C4"
 
 
@@ -621,7 +623,7 @@ def _build_dcf(wb: Workbook, assumptions: dict):
     for r in (13, 15, 17, 19):
         ws.row_dimensions[r].height = 26
 
-    _autosize(ws, min_w=14, max_w=22)
+    _autosize(ws, min_w=15, max_w=28)
     ws.column_dimensions["A"].width = 32
     ws.freeze_panes = "B4"
 
