@@ -11,6 +11,7 @@ from backend.agents import (
     valuation_agent, report_agent,
 )
 from backend.outputs import excel_builder, report_builder
+from backend.outputs.generate_dcf_excel import generate_dcf_excel
 from backend.config import EXCEL_DIR, REPORT_DIR
 
 log = logging.getLogger(__name__)
@@ -56,7 +57,43 @@ def run(ticker: str, source: str = "auto",
     excel_path = EXCEL_DIR / f"{file_id}.xlsx"
     report_path = REPORT_DIR / f"{file_id}.md"
 
-    excel_builder.build(profile, stmts, metrics, forecast, dcf, excel_path)
+    # 新版专业级 Excel 生成器：转成 dict schema 后调用 generate_dcf_excel
+    historical_dict = {
+        "years": [y.year for y in stmts.history],
+        "revenue": [y.revenue for y in stmts.history],
+        "ebit": [y.ebit for y in stmts.history],
+        "net_income": [y.net_income for y in stmts.history],
+        "depreciation_amortization": [y.da for y in stmts.history],
+        "capex": [y.capex for y in stmts.history],
+        "change_in_nwc": [
+            (stmts.history[i].nwc - stmts.history[i - 1].nwc) if i > 0 else 0.0
+            for i in range(len(stmts.history))
+        ],
+        "free_cash_flow": [y.fcf for y in stmts.history],
+        "cash": [y.cash for y in stmts.history],
+        "total_debt": [y.total_debt for y in stmts.history],
+        "shares_outstanding": [stmts.shares_outstanding] * len(stmts.history),
+    }
+    a = forecast.assumptions
+    assumptions_dict = {
+        "forecast_years": [y.year for y in forecast.years],
+        "revenue_growth": a.revenue_growth,
+        "ebit_margin": [a.ebit_margin] * a.forecast_years,
+        "tax_rate": a.tax_rate,
+        "da_percent_revenue": a.da_pct,
+        "capex_percent_revenue": a.capex_pct,
+        "nwc_percent_revenue": a.nwc_pct,
+        "wacc": a.wacc,
+        "terminal_growth_rate": a.terminal_growth,
+    }
+    generate_dcf_excel(
+        company_name=profile.name,
+        ticker=profile.ticker,
+        historical_data=historical_dict,
+        assumptions=assumptions_dict,
+        output_path=excel_path,
+        current_price=profile.current_price or 0.0,
+    )
     report = report_agent.write(profile, industry, company, stmts, metrics, forecast, dcf, gaps)
     report_builder.save_markdown(report, report_path)
 
