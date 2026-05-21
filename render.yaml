@@ -1,0 +1,15 @@
+# Render 蓝图：一键部署 FastAPI 后端
+# 用法：把仓库连接到 Render → New > Blueprint → 自动识别本文件
+services:
+  - type: web
+    name: ai-research-agent-api
+    runtime: python
+    plan: free  # 免费层：512MB RAM、首次请求约 30s 冷启动
+    region: oregon  # 免费层仅支持 oregon / singapore / frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    pythonVersion: "3.12.7"
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    healthCheckPath: /health

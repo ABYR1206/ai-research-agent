@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.pyc
+
+# Node
+node_modules/
+.next/
+out/
+.vercel
+.turbo
+
+# 运行时生成的产物
+storage/excel/*.xlsx
+storage/reports/*.md
+!storage/excel/.gitkeep
+!storage/reports/.gitkeep
+
+# IDE & OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Env
+.env
+.env.local
+.env*.local
+
+# Logs
+*.log
