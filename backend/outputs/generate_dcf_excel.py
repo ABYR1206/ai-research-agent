@@ -193,8 +193,22 @@ def _year_header(ws: Worksheet, row: int, col: int, value):
 
 
 def _autosize(ws: Worksheet, min_w: int = 12, max_w: int = 30):
-    """根据每列内容估算合适列宽。跳过合并单元格。"""
+    """根据每列内容估算合适列宽。
+
+    关键：公式单元格不能跳过 —— 否则全表都是公式的 sheet（DCF/Forecast）
+    会按标签宽度算，导致 ######。改为按 number_format 估算输出宽度。
+    """
     from openpyxl.cell.cell import MergedCell
+
+    # 每种 number_format 在最坏情况下需要的字符数（含千分位/$/%/括号红字）
+    NF_MIN_WIDTH = {
+        FMT_MONEY: 15,    # "1,813,239.0" + 括号红字预留
+        FMT_PRICE: 13,    # "$1,234,567.89"
+        FMT_PCT: 9,       # "-123.4%"
+        FMT_INT: 13,
+        FMT_FACTOR: 8,    # "0.9999"
+    }
+
     widths: dict[str, int] = {}
     for row in ws.iter_rows():
         for c in row:
@@ -202,12 +216,18 @@ def _autosize(ws: Worksheet, min_w: int = 12, max_w: int = 30):
                 continue
             s = str(c.value)
             if s.startswith("="):
-                continue
+                est = NF_MIN_WIDTH.get(c.number_format, min_w)
+            else:
+                est = len(s)
+                # 数字类型的字面值也要确保格式后宽度足够
+                if c.number_format in NF_MIN_WIDTH:
+                    est = max(est, NF_MIN_WIDTH[c.number_format])
             letter = c.column_letter
-            if len(s) > widths.get(letter, min_w):
-                widths[letter] = len(s)
+            if est > widths.get(letter, min_w):
+                widths[letter] = est
+
     for letter, w in widths.items():
-        ws.column_dimensions[letter].width = min(w + 3, max_w)
+        ws.column_dimensions[letter].width = min(w + 2, max_w)
 
 
 # ============================================================================
@@ -683,7 +703,7 @@ def _build_sensitivity(wb: Workbook, assumptions: dict):
     # 列宽
     ws.column_dimensions["A"].width = 14
     for col_letter in "BCDEFGH":
-        ws.column_dimensions[col_letter].width = 12
+        ws.column_dimensions[col_letter].width = 14
 
     ws.freeze_panes = "B6"
 
