@@ -192,6 +192,20 @@ def _year_header(ws: Worksheet, row: int, col: int, value):
     return c
 
 
+def _box_merged(ws: Worksheet, range_str: str, border: Border) -> None:
+    """给合并区域的每个 cell 设置 border，让 box 外框完整显示。
+
+    openpyxl 的 merged cell 边框只在左上角 cell 设是不够的 —— Excel
+    渲染时只画左上一格的边，box 就会看起来'格子不全'。必须遍历整个
+    范围给每个 cell 都设 border。
+    """
+    from openpyxl.utils import range_boundaries
+    min_col, min_row, max_col, max_row = range_boundaries(range_str)
+    for r in range(min_row, max_row + 1):
+        for c in range(min_col, max_col + 1):
+            ws.cell(row=r, column=c).border = border
+
+
 def _autosize(ws: Worksheet, min_w: int = 12, max_w: int = 30):
     """根据每列内容估算合适列宽。
 
@@ -283,23 +297,30 @@ def _build_cover(wb: Workbook, company_name: str, ticker: str):
     ]
     for i, (label, formula, fmt, hero) in enumerate(box_rows):
         r = 13 + i
+        # 左侧 label box: B:D
         ws.merge_cells(f"B{r}:D{r}")
         lc = ws.cell(row=r, column=2, value=label)
         lc.font = FONT_LABEL
         lc.alignment = ALIGN_LEFT
-        lc.border = BORDER_THIN
+        # 给整段合并范围画 box 边框（hero 行用粗边框统一视觉）
+        _box_merged(ws, f"B{r}:D{r}", BORDER_MEDIUM if hero else BORDER_THIN)
+
+        # 右侧数值 box: E:G
         ws.merge_cells(f"E{r}:G{r}")
         vc = ws.cell(row=r, column=5, value=formula)
         vc.number_format = fmt
         vc.alignment = ALIGN_RIGHT
-        vc.border = BORDER_MEDIUM if hero else BORDER_THIN
+        _box_merged(ws, f"E{r}:G{r}", BORDER_MEDIUM if hero else BORDER_THIN)
+
         if hero:
-            vc.fill = FILL_OUTPUT
+            # hero 行：填充绿底 + 大字号
+            for c in range(5, 8):
+                ws.cell(row=r, column=c).fill = FILL_OUTPUT
             vc.font = Font(name="Calibri", size=16, bold=True, color=NAVY)
-            ws.row_dimensions[r].height = 26
+            ws.row_dimensions[r].height = 28
         else:
             vc.font = FONT_OUTPUT
-            ws.row_dimensions[r].height = 20
+            ws.row_dimensions[r].height = 22
 
     # Methodology Note
     _section(ws, 22, "Methodology", last_col=8)
