@@ -1,3 +1,14 @@
+---
+title: AI Research Agent
+emoji: 📊
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+---
+
 # AI Research Agent — 自动生成分析师研究报告
 
 一个简化版投行/券商研究助理 AI Agent：输入股票代码 → 自动产出**行业分析 + 公司分析 + 财务三表 + 5 年预测 + DCF 估值 + 敏感性分析**，并下载**商务风格 Excel DCF 模型**和**Markdown 研究报告**。
