@@ -20,17 +20,22 @@ log = logging.getLogger(__name__)
 def _get_profile(ticker: str, source: str, gaps: list[str]):
     t = ticker.upper()
     if source == "mock":
-        return mock_data.get_mock_profile(t)
+        # 严格 mock：未知 ticker 也用合成数据，不报错
+        if mock_data.has_mock(t):
+            return mock_data.get_mock_profile(t)
+        gaps.append(f"{t} 不在内置 mock 列表，使用合成演示数据（非真实财报）。")
+        return mock_data.generate_synthetic_profile(t)
     if source == "yfinance":
         return fetcher.fetch_profile(t)
-    # auto
+    # auto：yfinance → 内置 mock → 合成
     try:
         return fetcher.fetch_profile(t)
     except fetcher.DataSourceError as e:
         if mock_data.has_mock(t):
-            gaps.append(f"yfinance profile 抓取失败（{e}），fallback 到内置 mock。")
+            gaps.append(f"yfinance 抓取失败，已 fallback 到内置 mock 数据。")
             return mock_data.get_mock_profile(t)
-        raise
+        gaps.append(f"yfinance 抓取失败且 {t} 不在内置 mock 列表，使用合成演示数据（非真实财报）。")
+        return mock_data.generate_synthetic_profile(t)
 
 
 def run(ticker: str, source: str = "auto",
@@ -42,7 +47,7 @@ def run(ticker: str, source: str = "auto",
     profile = _get_profile(ticker, source, gaps)
     industry = industry_agent.analyze(profile)
     company = company_agent.analyze(profile)
-    stmts, stmt_gaps = finance_agent.get_statements(ticker, source)
+    stmts, stmt_gaps = finance_agent.get_statements(ticker, source, sector_hint=profile.sector)
     gaps.extend(stmt_gaps)
     # 用 stmts 里的股数补 profile
     if not profile.shares_outstanding:

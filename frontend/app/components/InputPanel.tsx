@@ -10,7 +10,7 @@ const PRESETS = ["AAPL", "TSLA", "NVDA", "TSM"];
 
 export default function InputPanel({ onGenerate, loading }: Props) {
   const [ticker, setTicker] = useState("AAPL");
-  const [source, setSource] = useState("mock");
+  const [source, setSource] = useState("auto");
 
   return (
     <section className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
@@ -43,9 +43,9 @@ export default function InputPanel({ onGenerate, loading }: Props) {
             onChange={(e) => setSource(e.target.value)}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand outline-none"
           >
-            <option value="mock">内置 Mock 数据（最稳定）</option>
-            <option value="auto">自动：yfinance + Mock 兜底</option>
-            <option value="yfinance">仅 yfinance（联网）</option>
+            <option value="auto">自动（推荐）：yfinance → Mock → 合成兜底</option>
+            <option value="mock">Mock + 合成数据（任意 ticker 都可，最快）</option>
+            <option value="yfinance">仅 yfinance（联网，部分公司可能失败）</option>
           </select>
         </div>
 

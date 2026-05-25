@@ -5,13 +5,17 @@ from backend.data import fetcher, mock_data
 from backend.modeling import metrics as metrics_mod, forecast as forecast_mod
 
 
-def get_statements(ticker: str, source: str = "auto") -> tuple[FinancialStatements, list[str]]:
-    """获取三表。auto: 先 yfinance 再 mock；yfinance: 严格；mock: 直接 mock。
-    返回 (statements, data_gaps)。"""
+def get_statements(ticker: str, source: str = "auto",
+                    sector_hint: str = "Technology") -> tuple[FinancialStatements, list[str]]:
+    """获取三表。auto/mock: 都会兜底到合成数据，永不报错。yfinance: 严格。
+    返回 (statements, data_gaps)。sector_hint 用于合成时选行业模板。"""
     gaps: list[str] = []
     t = ticker.upper()
     if source == "mock":
-        return mock_data.get_mock_statements(t), gaps
+        if mock_data.has_mock(t):
+            return mock_data.get_mock_statements(t), gaps
+        gaps.append(f"{t} 不在内置 mock 列表，三表使用合成演示数据。")
+        return mock_data.generate_synthetic_statements(t, sector_hint), gaps
     if source == "yfinance":
         return fetcher.fetch_statements(t), gaps
     # auto
@@ -19,9 +23,10 @@ def get_statements(ticker: str, source: str = "auto") -> tuple[FinancialStatemen
         return fetcher.fetch_statements(t), gaps
     except fetcher.DataSourceError as e:
         if mock_data.has_mock(t):
-            gaps.append(f"yfinance 抓取失败（{e}），已 fallback 到内置 mock 数据。")
+            gaps.append(f"yfinance 抓取失败，三表已 fallback 到内置 mock 数据。")
             return mock_data.get_mock_statements(t), gaps
-        raise
+        gaps.append(f"yfinance 抓取失败且 {t} 不在内置 mock，三表使用合成演示数据。")
+        return mock_data.generate_synthetic_statements(t, sector_hint), gaps
 
 
 def compute_metrics(stmts: FinancialStatements) -> FinancialMetrics:

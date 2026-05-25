@@ -100,3 +100,117 @@ def get_mock_statements(ticker: str) -> FinancialStatements:
 
 def has_mock(ticker: str) -> bool:
     return ticker.upper() in PROFILES
+
+
+# ============================================================================
+# 合成数据生成器：给任意 ticker 编一组合理的 5 年财务数据，标注为"演示数据"
+# ============================================================================
+import hashlib
+
+# 行业典型财务结构模板（基于美股大类均值）
+_INDUSTRY_TEMPLATES = {
+    "Technology": dict(rev_base=50_000, growth=0.12, gross_m=0.55, ebit_m=0.25,
+                       capex_pct=0.05, da_pct=0.04, nwc_pct=-0.02, tax=0.16, shares=2_000),
+    "Healthcare": dict(rev_base=30_000, growth=0.08, gross_m=0.65, ebit_m=0.22,
+                       capex_pct=0.06, da_pct=0.05, nwc_pct=0.05, tax=0.18, shares=1_500),
+    "Financial Services": dict(rev_base=80_000, growth=0.06, gross_m=0.45, ebit_m=0.30,
+                               capex_pct=0.03, da_pct=0.03, nwc_pct=0.0, tax=0.22, shares=3_000),
+    "Consumer Cyclical": dict(rev_base=40_000, growth=0.10, gross_m=0.30, ebit_m=0.12,
+                              capex_pct=0.06, da_pct=0.04, nwc_pct=0.08, tax=0.21, shares=1_200),
+    "Consumer Defensive": dict(rev_base=60_000, growth=0.05, gross_m=0.35, ebit_m=0.15,
+                                capex_pct=0.04, da_pct=0.03, nwc_pct=0.05, tax=0.20, shares=2_500),
+    "Communication Services": dict(rev_base=70_000, growth=0.08, gross_m=0.55, ebit_m=0.28,
+                                    capex_pct=0.10, da_pct=0.08, nwc_pct=0.02, tax=0.18, shares=2_800),
+    "Industrials": dict(rev_base=35_000, growth=0.06, gross_m=0.28, ebit_m=0.13,
+                        capex_pct=0.05, da_pct=0.04, nwc_pct=0.10, tax=0.22, shares=1_300),
+    "Energy": dict(rev_base=100_000, growth=0.05, gross_m=0.30, ebit_m=0.18,
+                   capex_pct=0.12, da_pct=0.09, nwc_pct=0.06, tax=0.25, shares=2_000),
+    "Basic Materials": dict(rev_base=30_000, growth=0.05, gross_m=0.30, ebit_m=0.15,
+                            capex_pct=0.08, da_pct=0.06, nwc_pct=0.12, tax=0.22, shares=1_000),
+    "Real Estate": dict(rev_base=8_000, growth=0.07, gross_m=0.60, ebit_m=0.35,
+                        capex_pct=0.20, da_pct=0.15, nwc_pct=0.02, tax=0.15, shares=800),
+    "Utilities": dict(rev_base=25_000, growth=0.04, gross_m=0.45, ebit_m=0.20,
+                      capex_pct=0.18, da_pct=0.10, nwc_pct=0.03, tax=0.20, shares=900),
+}
+
+_DEFAULT_TEMPLATE = _INDUSTRY_TEMPLATES["Technology"]
+
+
+def _ticker_seed(ticker: str) -> float:
+    """根据 ticker 字符生成一个 0.7-1.3 的稳定缩放因子，让不同公司数字不同。"""
+    h = int(hashlib.md5(ticker.encode()).hexdigest()[:8], 16)
+    return 0.7 + (h % 1000) / 1000 * 0.6  # 0.7-1.3
+
+
+def _ticker_seed_shares(ticker: str) -> float:
+    """独立 hash bit：让 shares outstanding 缩放与 revenue 不相关，
+    这样隐含价（=equity/shares）才会真的因 ticker 不同。"""
+    h = int(hashlib.md5(ticker.encode()).hexdigest()[8:16], 16)
+    return 0.5 + (h % 1000) / 1000 * 2.0  # 0.5-2.5
+
+
+def _ticker_seed_growth(ticker: str) -> float:
+    """让增速也微调一下，使不同 ticker 估值结果差异更大。"""
+    h = int(hashlib.md5(ticker.encode()).hexdigest()[16:24], 16)
+    return 0.7 + (h % 1000) / 1000 * 0.6  # 0.7-1.3
+
+
+def generate_synthetic_profile(ticker: str, sector: str = "Technology",
+                                industry: str = "Diversified") -> CompanyProfile:
+    """为未知 ticker 生成合成 profile。"""
+    t = ticker.upper()
+    tpl = _INDUSTRY_TEMPLATES.get(sector, _DEFAULT_TEMPLATE)
+    scale = _ticker_seed(t)
+    share_scale = _ticker_seed_shares(t)
+    base_rev = tpl["rev_base"] * scale * (1 + tpl["growth"]) ** 5
+    return CompanyProfile(
+        ticker=t,
+        name=f"{t} Corporation",
+        sector=sector,
+        industry=industry,
+        country="United States",
+        currency="USD",
+        market_cap=base_rev * 3.5,
+        current_price=round(50 + scale * 100, 2),
+        shares_outstanding=tpl["shares"] * share_scale,
+    )
+
+
+def generate_synthetic_statements(ticker: str, sector: str = "Technology") -> FinancialStatements:
+    """为未知 ticker 生成 5 年合成历史财务数据。所有数字基于行业典型结构 + ticker 哈希缩放。"""
+    t = ticker.upper()
+    tpl = _INDUSTRY_TEMPLATES.get(sector, _DEFAULT_TEMPLATE)
+    scale = _ticker_seed(t)
+    growth_scale = _ticker_seed_growth(t)
+    base_year = 2020
+    history = []
+    rev = tpl["rev_base"] * scale
+    nwc_running = rev * tpl["nwc_pct"]
+    for i in range(5):
+        # 让增速逐年衰减一点点 + 每个 ticker 微调增速曲线
+        g = tpl["growth"] * growth_scale * (1 - i * 0.05)
+        if i > 0:
+            rev = rev * (1 + g)
+        gp = rev * tpl["gross_m"]
+        ebit = rev * tpl["ebit_m"]
+        da = rev * tpl["da_pct"]
+        ebitda = ebit + da
+        ni = ebit * (1 - tpl["tax"])
+        capex = rev * tpl["capex_pct"]
+        nwc_new = rev * tpl["nwc_pct"]
+        ocf = ni + da
+        fcf = ocf - capex
+        history.append(YearData(
+            year=base_year + i, revenue=round(rev, 1), gross_profit=round(gp, 1),
+            ebit=round(ebit, 1), ebitda=round(ebitda, 1), net_income=round(ni, 1),
+            total_assets=round(rev * 1.8, 1), total_debt=round(rev * 0.3, 1),
+            cash=round(rev * 0.2, 1), equity=round(rev * 0.7, 1),
+            operating_cf=round(ocf, 1), capex=round(capex, 1), da=round(da, 1),
+            nwc=round(nwc_new, 1), fcf=round(fcf, 1),
+        ))
+        nwc_running = nwc_new
+
+    return FinancialStatements(
+        ticker=t, shares_outstanding=tpl["shares"] * _ticker_seed_shares(t),
+        history=history, data_source="synthetic",
+    )
