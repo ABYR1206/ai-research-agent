@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 
 from backend.schemas import GenerateResponse, ForecastAssumptions
-from backend.data import fetcher, mock_data
+from backend.data import fetcher, mock_data, eastmoney
 from backend.agents import (
     industry_agent, company_agent, finance_agent,
     valuation_agent, report_agent,
@@ -20,22 +20,25 @@ log = logging.getLogger(__name__)
 def _get_profile(ticker: str, source: str, gaps: list[str]):
     t = ticker.upper()
     if source == "mock":
-        # 严格 mock：未知 ticker 也用合成数据，不报错
         if mock_data.has_mock(t):
             return mock_data.get_mock_profile(t)
-        gaps.append(f"{t} 不在内置 mock 列表，使用合成演示数据（非真实财报）。")
         return mock_data.generate_synthetic_profile(t)
     if source == "yfinance":
         return fetcher.fetch_profile(t)
-    # auto：yfinance → 内置 mock → 合成
+    if source == "eastmoney":
+        return eastmoney.fetch_profile(t)
+    # auto：东方财富（实时） → yfinance → 内置 mock → 合成
     try:
-        return fetcher.fetch_profile(t)
-    except fetcher.DataSourceError as e:
-        if mock_data.has_mock(t):
-            gaps.append(f"yfinance 抓取失败，已 fallback 到内置 mock 数据。")
-            return mock_data.get_mock_profile(t)
-        gaps.append(f"yfinance 抓取失败且 {t} 不在内置 mock 列表，使用合成演示数据（非真实财报）。")
-        return mock_data.generate_synthetic_profile(t)
+        return eastmoney.fetch_profile(t)
+    except eastmoney.EastmoneyError as e:
+        log.info(f"eastmoney profile fail for {t}: {e}; trying yfinance")
+        try:
+            return fetcher.fetch_profile(t)
+        except fetcher.DataSourceError:
+            if mock_data.has_mock(t):
+                gaps.append("实时接口抓取失败，已 fallback 到内置 mock 数据。")
+                return mock_data.get_mock_profile(t)
+            return mock_data.generate_synthetic_profile(t)
 
 
 def run(ticker: str, source: str = "auto",
@@ -102,9 +105,14 @@ def run(ticker: str, source: str = "auto",
     report = report_agent.write(profile, industry, company, stmts, metrics, forecast, dcf, gaps)
     report_builder.save_markdown(report, report_path)
 
+    # 去重 data_gaps（profile + statements 容易报同一条）
+    unique_gaps = list(dict.fromkeys(gaps))
+    if stmts.data_source == "synthetic" and not any("演示数据" in g for g in unique_gaps):
+        unique_gaps.append(f"{ticker} 使用合成演示数据（基于行业典型结构生成，非真实财报）。")
+
     return GenerateResponse(
         profile=profile, industry=industry, company=company,
         statements=stmts, metrics=metrics, forecast=forecast, dcf=dcf,
         report=report, excel_file_id=file_id, report_file_id=file_id,
-        data_gaps=gaps,
+        data_gaps=unique_gaps,
     )

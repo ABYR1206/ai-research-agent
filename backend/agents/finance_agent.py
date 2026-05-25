@@ -1,7 +1,7 @@
 """Module 3a: 财务报表获取 + 指标计算 + 假设推导 + 预测。"""
 from __future__ import annotations
 from backend.schemas import FinancialStatements, FinancialMetrics, Forecast
-from backend.data import fetcher, mock_data
+from backend.data import fetcher, mock_data, eastmoney
 from backend.modeling import metrics as metrics_mod, forecast as forecast_mod
 
 
@@ -14,19 +14,22 @@ def get_statements(ticker: str, source: str = "auto",
     if source == "mock":
         if mock_data.has_mock(t):
             return mock_data.get_mock_statements(t), gaps
-        gaps.append(f"{t} 不在内置 mock 列表，三表使用合成演示数据。")
         return mock_data.generate_synthetic_statements(t, sector_hint), gaps
     if source == "yfinance":
         return fetcher.fetch_statements(t), gaps
-    # auto
+    if source == "eastmoney":
+        return eastmoney.fetch_statements(t), gaps
+    # auto：东方财富 → yfinance → mock → 合成
     try:
-        return fetcher.fetch_statements(t), gaps
-    except fetcher.DataSourceError as e:
-        if mock_data.has_mock(t):
-            gaps.append(f"yfinance 抓取失败，三表已 fallback 到内置 mock 数据。")
-            return mock_data.get_mock_statements(t), gaps
-        gaps.append(f"yfinance 抓取失败且 {t} 不在内置 mock，三表使用合成演示数据。")
-        return mock_data.generate_synthetic_statements(t, sector_hint), gaps
+        return eastmoney.fetch_statements(t), gaps
+    except eastmoney.EastmoneyError:
+        try:
+            return fetcher.fetch_statements(t), gaps
+        except fetcher.DataSourceError:
+            if mock_data.has_mock(t):
+                gaps.append("实时接口抓取失败，三表已 fallback 到内置 mock 数据。")
+                return mock_data.get_mock_statements(t), gaps
+            return mock_data.generate_synthetic_statements(t, sector_hint), gaps
 
 
 def compute_metrics(stmts: FinancialStatements) -> FinancialMetrics:

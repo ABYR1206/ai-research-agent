@@ -39,6 +39,18 @@ _TEMPLATES: dict[str, dict] = {
         "threats": ["大客户自研芯片", "AI 资本开支周期性放缓", "中美科技脱钩"],
         "risks": ["AI 需求一旦放缓估值回撤剧烈", "出口管制升级", "供应链（TSMC/HBM）"],
     },
+    "ZJMGF": {
+        "segments": ["铜矿（科卢韦齐、卡莫阿、塞尔维亚 RTB 等）", "金矿（陇南 / 诺顿金田 / Buritica 等）", "锂资源（阿根廷 3Q 盐湖、湖南湘源等）", "锌、银等其他金属"],
+        "revenue_mix": "铜约占 30-35%（毛利最高），金约占 50%（受金价上涨拉动），锌+锂+其他约 15-20%；冶炼贸易低毛利但贡献规模。",
+        "business_model": "矿业一体化：以收购海外低成本铜金矿为核心，运营管理 + 资源储量 + 冶炼一条龙；铜、金、锂三大主业 + 全球资源布局。",
+        "moat": ["全球低成本矿山组合", "境外资源开发能力（拉美、非洲、中亚）", "扩张并购整合能力", "高品位储量与成本曲线左侧位置"],
+        "competitors": ["BHP", "Freeport-McMoRan", "Glencore", "Newmont", "Barrick Gold", "Anglo American", "Antofagasta", "First Quantum"],
+        "strengths": ["铜金价格周期上行充分受益", "管理团队执行力强（陈景河董事长）", "海外矿山布局领先 / 卡莫阿成 A 类世界级铜矿", "权益资源储量行业领先"],
+        "weaknesses": ["对铜价/金价高度敏感", "海外项目地缘政治风险（刚果、塞尔维亚、阿根廷等）", "资本开支重 + 高负债率（~55%）", "海外社区与环保 ESG 压力"],
+        "opportunities": ["能源转型驱动铜结构性短缺", "全球央行增持黄金", "锂矿业务远期放量（3Q 等）", "新能源金属（钴、镍）布局延伸"],
+        "threats": ["全球经济衰退压制铜需求", "矿业资源国资源税与国有化倾向", "美元强势压制金属价格", "中国房地产长期低迷"],
+        "risks": ["铜价或金价回调 10% 即可显著拖累净利", "海外矿山所在国政治动荡 / 协议变更", "卡莫阿、3Q 等核心项目执行延期", "汇率（人民币 / 美元 / 当地货币）"],
+    },
     "TSM": {
         "segments": ["高端先进制程（3nm/5nm/7nm）", "成熟制程（28nm 以上）", "封装与测试", "特色工艺"],
         "revenue_mix": "5nm 及以下先进制程约占 50%+（HPC/AI 客户），7nm 约 15%，成熟制程约 30%。",
@@ -205,7 +217,8 @@ _DEFAULT_FALLBACK = dict(
 
 def analyze(profile: CompanyProfile) -> CompanyAnalysis:
     """生成公司分析。已知 mock ticker 走精细模板，未知 ticker 按 sector 走通用模板。"""
-    t_upper = profile.ticker.upper()
+    from backend.data.mock_data import _resolve as _resolve_ticker
+    t_upper = _resolve_ticker(profile.ticker)
     if t_upper in _TEMPLATES:
         t = _TEMPLATES[t_upper]
     else:

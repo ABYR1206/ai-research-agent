@@ -36,7 +36,33 @@ PROFILES: dict[str, CompanyProfile] = {
         currency="USD", market_cap=900_000, current_price=175.0,
         shares_outstanding=5_186.0,
     ),
+    "ZJMGF": CompanyProfile(
+        ticker="ZJMGF", name="Zijin Mining Group Co., Ltd. (紫金矿业)",
+        sector="Basic Materials",
+        industry="Copper & Gold Mining",
+        country="China", currency="USD",
+        market_cap=66_390,  # ~2.5 USD * 26,556M shares
+        current_price=2.50,  # A 股 ~18 RMB ≈ USD 2.5（汇率 7.2）
+        shares_outstanding=26_556.0,  # A+H 总股本约 265.56 亿股
+    ),
 }
+
+# 紫金矿业别名 → 标准 ticker
+_TICKER_ALIAS = {
+    "2899.HK": "ZJMGF",
+    "02899.HK": "ZJMGF",
+    "2899": "ZJMGF",
+    "601899.SS": "ZJMGF",
+    "601899.SH": "ZJMGF",
+    "601899": "ZJMGF",
+    "ZIJINMINING": "ZJMGF",
+}
+
+
+def _resolve(ticker: str) -> str:
+    """把港股 / A 股 / ADR 代码统一映射到标准 ticker。"""
+    t = ticker.upper().strip()
+    return _TICKER_ALIAS.get(t, t)
 
 
 STATEMENTS: dict[str, FinancialStatements] = {
@@ -80,26 +106,41 @@ STATEMENTS: dict[str, FinancialStatements] = {
             _yd(2024, 87000, 47900, 36800, 53100, 35100, 162000, 28500, 65000, 110000, 53400, 28400, 16300, 5400),
         ],
     ),
+    # 紫金矿业 — 数据基于公司年报 2020-2024，按 1 USD = 7.0 RMB 换算到 USD millions
+    # 来源：紫金矿业官网 / 上交所披露 / 2024 年报摘要
+    # 原始 RMB 亿元：2020-2024 营收 1715/2251/2703/2934/3036；归母净利 65/157/200/211/321；
+    # OCF 143/261/287/369/489；2024 总资产 3966 亿、净资产 1398 亿（归母）、负债率 55%
+    "ZJMGF": FinancialStatements(
+        ticker="ZJMGF", shares_outstanding=26_556.0, data_source="mock",
+        history=[
+            # year, rev, gp,    ebit, ebitda, ni,  ta,   td,    cash,  eq,    ocf,  capex, da,   nwc
+            _yd(2020, 24500, 4900, 3186,  4001,  928,  22829, 9000, 1500, 7000,  2043, 1929, 815,  2000),
+            _yd(2021, 32157, 7080, 5145,  6174,  2243, 28286, 12000, 2050, 9000, 3729, 3000, 1029, 2800),
+            _yd(2022, 38614, 8495, 6178,  7664,  2857, 35430, 16000, 2286, 12000, 4100, 4000, 1486, 3200),
+            _yd(2023, 41914, 9221, 6707,  8622,  3014, 49143, 25000, 3357, 17000, 5271, 4071, 1915, 3700),
+            _yd(2024, 43371, 9974, 8030,  10244, 4579, 56657, 31164, 4429, 25500, 6980, 4214, 2214, 4600),
+        ],
+    ),
 }
 
 
 def get_mock_profile(ticker: str) -> CompanyProfile:
-    """返回内置 profile，未知 ticker 抛 KeyError。"""
-    t = ticker.upper()
+    """返回内置 profile，未知 ticker 抛 KeyError。支持 ticker alias 解析。"""
+    t = _resolve(ticker)
     if t not in PROFILES:
         raise KeyError(f"No mock profile for {t}; supported: {list(PROFILES.keys())}")
     return PROFILES[t]
 
 
 def get_mock_statements(ticker: str) -> FinancialStatements:
-    t = ticker.upper()
+    t = _resolve(ticker)
     if t not in STATEMENTS:
         raise KeyError(f"No mock statements for {t}")
     return STATEMENTS[t]
 
 
 def has_mock(ticker: str) -> bool:
-    return ticker.upper() in PROFILES
+    return _resolve(ticker) in PROFILES
 
 
 # ============================================================================
@@ -155,19 +196,28 @@ def _ticker_seed_growth(ticker: str) -> float:
     return 0.7 + (h % 1000) / 1000 * 0.6  # 0.7-1.3
 
 
-def generate_synthetic_profile(ticker: str, sector: str = "Technology",
-                                industry: str = "Diversified") -> CompanyProfile:
-    """为未知 ticker 生成合成 profile。"""
+def generate_synthetic_profile(ticker: str, sector: str | None = None,
+                                industry: str | None = None) -> CompanyProfile:
+    """为未知 ticker 生成合成 profile。优先查内置 ticker→sector 映射表，
+    没命中再用调用方传入的 sector 或默认 Technology。"""
+    from backend.data import ticker_sector
     t = ticker.upper()
-    tpl = _INDUSTRY_TEMPLATES.get(sector, _DEFAULT_TEMPLATE)
+    info = ticker_sector.lookup(t)
+    if info:
+        eff_sector, eff_industry, eff_name = info
+    else:
+        eff_sector = sector or "Technology"
+        eff_industry = industry or "Diversified"
+        eff_name = f"{t} Corporation"
+    tpl = _INDUSTRY_TEMPLATES.get(eff_sector, _DEFAULT_TEMPLATE)
     scale = _ticker_seed(t)
     share_scale = _ticker_seed_shares(t)
     base_rev = tpl["rev_base"] * scale * (1 + tpl["growth"]) ** 5
     return CompanyProfile(
         ticker=t,
-        name=f"{t} Corporation",
-        sector=sector,
-        industry=industry,
+        name=eff_name,
+        sector=eff_sector,
+        industry=eff_industry,
         country="United States",
         currency="USD",
         market_cap=base_rev * 3.5,

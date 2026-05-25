@@ -43,9 +43,10 @@ export default function InputPanel({ onGenerate, loading }: Props) {
             onChange={(e) => setSource(e.target.value)}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand outline-none"
           >
-            <option value="auto">自动（推荐）：yfinance → Mock → 合成兜底</option>
-            <option value="mock">Mock + 合成数据（任意 ticker 都可，最快）</option>
-            <option value="yfinance">仅 yfinance（联网，部分公司可能失败）</option>
+            <option value="auto">自动（推荐）：东方财富 实时 → yfinance → Mock → 合成兜底</option>
+            <option value="eastmoney">仅东方财富（A 股 / 港股 / 美股 实时）</option>
+            <option value="mock">Mock + 合成数据（演示最稳）</option>
+            <option value="yfinance">仅 yfinance（部分公司可能失败）</option>
           </select>
         </div>
 
