@@ -97,7 +97,7 @@ _TICKER_ALIAS = {
     # 紫金矿业
     "2899.HK": "ZJMGF", "02899.HK": "ZJMGF", "2899": "ZJMGF",
     "601899.SS": "ZJMGF", "601899.SH": "ZJMGF", "601899": "ZJMGF",
-    "ZIJINMINING": "ZJMGF",
+    "ZIJINMINING": "ZJMGF", "紫金": "ZJMGF", "紫金矿业": "ZJMGF",
     # 贵州茅台
     "600519.SS": "MOUTAI", "600519.SH": "MOUTAI", "600519": "MOUTAI",
     "MOUTAI.SS": "MOUTAI", "KWEICHOWMOUTAI": "MOUTAI", "茅台": "MOUTAI",
@@ -108,10 +108,10 @@ _TICKER_ALIAS = {
     # 工商银行
     "601398.SS": "ICBC", "601398.SH": "ICBC", "601398": "ICBC",
     "1398.HK": "ICBC", "01398.HK": "ICBC", "IDCBY": "ICBC",
-    "工商银行": "ICBC",
+    "工商银行": "ICBC", "工行": "ICBC",
     # 宁德时代
     "300750.SZ": "CATL", "300750": "CATL", "CATLBATTERY": "CATL",
-    "宁德时代": "CATL",
+    "宁德时代": "CATL", "宁德": "CATL", "宁王": "CATL",
     # 比亚迪
     "002594.SZ": "BYD", "002594": "BYD",
     "1211.HK": "BYD", "01211.HK": "BYD", "BYDDY": "BYD", "BYDDF": "BYD",
