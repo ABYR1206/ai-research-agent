@@ -272,6 +272,15 @@ def fetch_statements(ticker: str) -> FinancialStatements:
                 fcf=round(fcf_local * fx / 1e6, 1),
             ))
 
+        # 校验：emweb 偶尔会返回字段全为 None 的"指标摘要"行（营收/净利字段为 0）
+        # 此时数据完全没用，强制 raise 触发 fallback 到 synthetic
+        non_zero_years = sum(1 for h in history if h.revenue > 0)
+        if non_zero_years < 2:
+            raise EastmoneyError(
+                f"emweb returned {len(history)} annual rows but {non_zero_years} had non-zero revenue; "
+                f"endpoint likely returned summary indicators only, not absolute values"
+            )
+
         last = annual[-1]
         shares_m = (float(last.get("PARENT_NETPROFIT") or 0) / float(last.get("EPSJB") or 1) / 1e6) if last.get("EPSJB") else 1000
 
