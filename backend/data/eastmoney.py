@@ -141,6 +141,9 @@ def _fetch_sector_industry(code: str, market: str) -> tuple[str, str]:
         s_map = {
             "黄金": ("Basic Materials", "Gold"),
             "有色金属": ("Basic Materials", "Industrial Metals & Mining"),
+            "工业金属": ("Basic Materials", "Industrial Metals & Mining"),
+            "贵金属": ("Basic Materials", "Other Precious Metals & Mining"),
+            "小金属": ("Basic Materials", "Other Industrial Metals & Mining"),
             "采掘": ("Basic Materials", "Other Industrial Metals & Mining"),
             "化工": ("Basic Materials", "Chemicals"),
             "钢铁": ("Basic Materials", "Steel"),
@@ -197,61 +200,60 @@ _ABS_FIELDS = ",".join([
 
 
 def fetch_statements(ticker: str) -> FinancialStatements:
-    """拉近 5 年（5 个年度）关键财务指标。"""
+    """拉近 5 年（5 个年度）关键财务指标。
+
+    使用 emweb.eastmoney.com/PC_HSF10/NewFinanceAnalysis/zyzbAjaxNew 接口
+    —— 这是东方财富 F10 个股财务摘要的官方端点，akshare 内部也用它。
+    对海外 IP 友好，无需 token，返回数据丰富（含 ROE/毛利率/负债率等）。
+    """
     secid, market, currency, fx = _resolve_secid(ticker)
     if market not in ("SH", "SZ", "HK"):
-        raise EastmoneyError(f"fetch_statements: market {market} not yet supported via eastmoney")
+        raise EastmoneyError(f"fetch_statements: market {market} not supported via eastmoney; use yfinance for US tickers")
 
-    code = ticker.split(".")[0]
+    code = ticker.split(".")[0].zfill(6 if market in ("SH", "SZ") else 5)
+    market_prefix = {"SH": "SH", "SZ": "SZ", "HK": "HK"}[market]
     s = _get_session()
     try:
-        url = "https://datacenter.eastmoney.com/securities/api/data/v1/get"
-        params = {
-            "reportName": "RPT_LICO_FN_CPD",
-            "columns": "SECURITY_CODE,REPORT_DATE,REPORT_TYPE,NOTICE_DATE,TOTAL_OPERATE_INCOME,PARENT_NETPROFIT,WEIGHTAVG_ROE,EPSJB,BPS,MGJYXJJE,XSMLL,XSJLL,ZCFZL,YSHZ,YSZXL",
-            "filter": f'(SECURITY_CODE="{code}")(REPORT_TYPE="年报")(REPORT_DATE>=\'2019-12-31\')',
-            "pageSize": 10,
-            "sortColumns": "REPORT_DATE",
-            "sortTypes": -1,
-            "client": "WEB",
-            "source": "WEB",
-        }
-        r = s.get(url, params=params, timeout=10)
+        url = "https://emweb.eastmoney.com/PC_HSF10/NewFinanceAnalysis/zyzbAjaxNew"
+        params = {"type": "0", "code": f"{market_prefix}{code}"}  # type=0 按报告期
+        r = s.get(url, params=params, timeout=12)
         r.raise_for_status()
-        rows = ((r.json() or {}).get("result") or {}).get("data") or []
+        payload = r.json() or {}
+        rows = payload.get("data") or []
         if not rows:
-            raise EastmoneyError(f"no annual financial data for {ticker}")
+            raise EastmoneyError(f"emweb returned no data for {market_prefix}{code}")
 
-        # rows 按 REPORT_DATE DESC，取最近 5 个，并按年份升序
-        rows = rows[:5][::-1]
+        # 只保留年报（REPORT_DATE 以 "-12-31" 结尾），按年份降序取 5 个，再升序
+        annual = [r for r in rows if str(r.get("REPORT_DATE", ""))[5:10] == "12-31"]
+        if not annual:
+            raise EastmoneyError(f"no annual reports for {market_prefix}{code}")
+        annual = sorted(annual, key=lambda r: r["REPORT_DATE"], reverse=True)[:5]
+        annual = annual[::-1]  # 升序
+
         history: list[YearData] = []
-        prev_rev_local = None
-        for row in rows:
+        for row in annual:
             year = int(row["REPORT_DATE"][:4])
             rev_local = float(row.get("TOTAL_OPERATE_INCOME") or 0)
             ni_local = float(row.get("PARENT_NETPROFIT") or 0)
-            net_margin = float(row.get("XSJLL") or 0) / 100  # %
-            gross_margin = float(row.get("XSMLL") or 0) / 100
-            debt_ratio = float(row.get("ZCFZL") or 0) / 100
-            ocf_per_share = float(row.get("MGJYXJJE") or 0)
-            eps = float(row.get("EPSJB") or 0)
+            gross_margin = float(row.get("XSMLL") or 0) / 100  # 销售毛利率
+            debt_ratio = float(row.get("ZCFZL") or 0) / 100    # 资产负债率
+            roe = float(row.get("ROEJQ") or row.get("WEIGHTAVG_ROE") or 0) / 100
+            ocf_per_share = float(row.get("MGJYXJJE") or 0)    # 每股经营现金流
+            eps = float(row.get("EPSJB") or 0)                 # 基本每股收益
 
-            # 估算
             shares = ni_local / eps if eps else 1.0
             ocf_local = ocf_per_share * shares if eps else ni_local * 1.2
-            # 经验估算: EBIT ≈ NI / (1-tax), tax 假设 0.25
-            ebit_local = ni_local / 0.75 if ni_local > 0 else 0
-            gp_local = rev_local * gross_margin
-            da_local = rev_local * 0.04  # 估算
+            ebit_local = ni_local / 0.75 if ni_local > 0 else rev_local * 0.1
+            gp_local = rev_local * gross_margin if gross_margin else rev_local * 0.3
+            da_local = rev_local * 0.04
             ebitda_local = ebit_local + da_local
-            capex_local = rev_local * 0.06  # 估算
-            ta_local = (ni_local / (float(row.get("WEIGHTAVG_ROE") or 10) / 100)) / (1 - debt_ratio) if row.get("WEIGHTAVG_ROE") and debt_ratio < 1 else rev_local * 1.5
-            td_local = ta_local * debt_ratio * 0.5  # debt ≈ 一半总负债
+            capex_local = rev_local * 0.06
+            ta_local = (ni_local / roe) / (1 - debt_ratio) if roe > 0 and debt_ratio < 0.95 else rev_local * 1.5
+            td_local = ta_local * debt_ratio * 0.5
             cash_local = rev_local * 0.1
             eq_local = ta_local * (1 - debt_ratio)
             fcf_local = ocf_local - capex_local
 
-            # 元 → USD millions
             history.append(YearData(
                 year=year,
                 revenue=round(rev_local * fx / 1e6, 1),
@@ -270,9 +272,8 @@ def fetch_statements(ticker: str) -> FinancialStatements:
                 fcf=round(fcf_local * fx / 1e6, 1),
             ))
 
-        # shares outstanding: 用最近一年 net_income / EPS
-        last = rows[-1]
-        shares_m = float(last.get("PARENT_NETPROFIT") or 0) / float(last.get("EPSJB") or 1) / 1e6 if last.get("EPSJB") else 1000
+        last = annual[-1]
+        shares_m = (float(last.get("PARENT_NETPROFIT") or 0) / float(last.get("EPSJB") or 1) / 1e6) if last.get("EPSJB") else 1000
 
         return FinancialStatements(
             ticker=ticker.upper(),
@@ -283,4 +284,4 @@ def fetch_statements(ticker: str) -> FinancialStatements:
     except EastmoneyError:
         raise
     except Exception as e:
-        raise EastmoneyError(f"fetch_statements({ticker}) failed: {e}") from e
+        raise EastmoneyError(f"fetch_statements({ticker}) via emweb failed: {e}") from e
