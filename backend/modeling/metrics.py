@@ -26,12 +26,18 @@ def compute(stmts: FinancialStatements) -> FinancialMetrics:
     nwc_pct = [_safe_div(y.nwc, y.revenue) for y in h]
     da_pct = [_safe_div(y.da, y.revenue) for y in h]
 
-    # 税率：用 EBIT 与净利反推；缺数据回退到 21%
+    # 税率：用 EBIT 与净利反推。但 EBIT - NI 还包含利息支出/非经常损益，
+    # 直接反推容易过高。给上限 0.25 接近全球大公司平均有效税率。
     tax_rates = []
     for y in h:
-        if y.ebit > 0 and y.net_income < y.ebit:
-            implied = max(0.0, min(0.4, 1 - _safe_div(y.net_income, y.ebit)))
-            tax_rates.append(implied)
+        if y.ebit > 0 and y.net_income > 0:
+            ratio = _safe_div(y.net_income, y.ebit)
+            if ratio > 0.85:
+                tax_rates.append(0.12)
+            elif ratio < 0.55:
+                tax_rates.append(0.25)
+            else:
+                tax_rates.append(round(1 - ratio, 4))
         else:
             tax_rates.append(0.21)
 

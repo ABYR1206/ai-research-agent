@@ -38,24 +38,95 @@ PROFILES: dict[str, CompanyProfile] = {
     ),
     "ZJMGF": CompanyProfile(
         ticker="ZJMGF", name="Zijin Mining Group Co., Ltd. (紫金矿业)",
-        sector="Basic Materials",
-        industry="Copper & Gold Mining",
+        sector="Basic Materials", industry="Copper & Gold Mining",
         country="China", currency="USD",
-        market_cap=66_390,  # ~2.5 USD * 26,556M shares
-        current_price=2.50,  # A 股 ~18 RMB ≈ USD 2.5（汇率 7.2）
-        shares_outstanding=26_556.0,  # A+H 总股本约 265.56 亿股
+        market_cap=66_390, current_price=2.50, shares_outstanding=26_556.0,
+    ),
+    "MOUTAI": CompanyProfile(
+        ticker="MOUTAI", name="Kweichow Moutai Co., Ltd. (贵州茅台)",
+        sector="Consumer Defensive", industry="Beverages—Wineries & Distilleries",
+        country="China", currency="USD",
+        market_cap=261_320, current_price=208.0, shares_outstanding=1_256.0,
+    ),
+    "TENCENT": CompanyProfile(
+        ticker="TENCENT", name="Tencent Holdings Ltd. (腾讯控股)",
+        sector="Communication Services", industry="Internet Content & Information",
+        country="Hong Kong", currency="USD",
+        market_cap=455_700, current_price=49.0, shares_outstanding=9_300.0,
+    ),
+    "ICBC": CompanyProfile(
+        ticker="ICBC", name="Industrial and Commercial Bank of China (工商银行)",
+        sector="Financial Services", industry="Banks—Diversified",
+        country="China", currency="USD",
+        market_cap=345_714, current_price=0.97, shares_outstanding=356_406.0,
+    ),
+    "CATL": CompanyProfile(
+        ticker="CATL", name="Contemporary Amperex Technology (宁德时代)",
+        sector="Industrials", industry="Electrical Equipment & Parts",
+        country="China", currency="USD",
+        market_cap=154_000, current_price=35.0, shares_outstanding=4_400.0,
+    ),
+    "BYD": CompanyProfile(
+        ticker="BYD", name="BYD Company Limited (比亚迪)",
+        sector="Consumer Cyclical", industry="Auto Manufacturers",
+        country="China", currency="USD",
+        market_cap=113_490, current_price=39.0, shares_outstanding=2_910.0,
+    ),
+    "PINGAN": CompanyProfile(
+        ticker="PINGAN", name="Ping An Insurance Group (中国平安)",
+        sector="Financial Services", industry="Insurance—Diversified",
+        country="China", currency="USD",
+        market_cap=126_377, current_price=6.94, shares_outstanding=18_210.0,
+    ),
+    "BABA": CompanyProfile(
+        ticker="BABA", name="Alibaba Group Holding Limited (阿里巴巴)",
+        sector="Consumer Cyclical", industry="Internet Retail",
+        country="China", currency="USD",
+        market_cap=248_840, current_price=102.8, shares_outstanding=2_420.0,
+    ),
+    "HENGRUI": CompanyProfile(
+        ticker="HENGRUI", name="Jiangsu Hengrui Pharmaceuticals (恒瑞医药)",
+        sector="Healthcare", industry="Drug Manufacturers—Specialty",
+        country="China", currency="USD",
+        market_cap=44_277, current_price=6.94, shares_outstanding=6_380.0,
     ),
 }
 
-# 紫金矿业别名 → 标准 ticker
+# 全量真实 mock 公司：所有市场代码统一映射到标准内部 ticker
 _TICKER_ALIAS = {
-    "2899.HK": "ZJMGF",
-    "02899.HK": "ZJMGF",
-    "2899": "ZJMGF",
-    "601899.SS": "ZJMGF",
-    "601899.SH": "ZJMGF",
-    "601899": "ZJMGF",
+    # 紫金矿业
+    "2899.HK": "ZJMGF", "02899.HK": "ZJMGF", "2899": "ZJMGF",
+    "601899.SS": "ZJMGF", "601899.SH": "ZJMGF", "601899": "ZJMGF",
     "ZIJINMINING": "ZJMGF",
+    # 贵州茅台
+    "600519.SS": "MOUTAI", "600519.SH": "MOUTAI", "600519": "MOUTAI",
+    "MOUTAI.SS": "MOUTAI", "KWEICHOWMOUTAI": "MOUTAI", "茅台": "MOUTAI",
+    # 腾讯控股
+    "0700.HK": "TENCENT", "00700.HK": "TENCENT", "0700": "TENCENT",
+    "00700": "TENCENT", "700.HK": "TENCENT", "TCEHY": "TENCENT",
+    "腾讯": "TENCENT",
+    # 工商银行
+    "601398.SS": "ICBC", "601398.SH": "ICBC", "601398": "ICBC",
+    "1398.HK": "ICBC", "01398.HK": "ICBC", "IDCBY": "ICBC",
+    "工商银行": "ICBC",
+    # 宁德时代
+    "300750.SZ": "CATL", "300750": "CATL", "CATLBATTERY": "CATL",
+    "宁德时代": "CATL",
+    # 比亚迪
+    "002594.SZ": "BYD", "002594": "BYD",
+    "1211.HK": "BYD", "01211.HK": "BYD", "BYDDY": "BYD", "BYDDF": "BYD",
+    "比亚迪": "BYD",
+    # 中国平安
+    "601318.SS": "PINGAN", "601318.SH": "PINGAN", "601318": "PINGAN",
+    "2318.HK": "PINGAN", "02318.HK": "PINGAN", "PNGAY": "PINGAN",
+    "平安": "PINGAN", "中国平安": "PINGAN",
+    # 阿里巴巴
+    "9988.HK": "BABA", "09988.HK": "BABA",
+    "BABA.US": "BABA", "ALIBABA": "BABA", "阿里巴巴": "BABA", "阿里": "BABA",
+    # 恒瑞医药
+    "600276.SS": "HENGRUI", "600276.SH": "HENGRUI", "600276": "HENGRUI",
+    "1276.HK": "HENGRUI", "01276.HK": "HENGRUI",
+    "恒瑞": "HENGRUI", "恒瑞医药": "HENGRUI",
 }
 
 
@@ -119,6 +190,95 @@ STATEMENTS: dict[str, FinancialStatements] = {
             _yd(2022, 38614, 8495, 6178,  7664,  2857, 35430, 16000, 2286, 12000, 4100, 4000, 1486, 3200),
             _yd(2023, 41914, 9221, 6707,  8622,  3014, 49143, 25000, 3357, 17000, 5271, 4071, 1915, 3700),
             _yd(2024, 43371, 9974, 8030,  10244, 4579, 56657, 31164, 4429, 25500, 6980, 4214, 2214, 4600),
+        ],
+    ),
+    # 贵州茅台：高毛利(~92%)、轻资产、几乎无负债、现金巨多。RMB→USD/7.2
+    "MOUTAI": FinancialStatements(
+        ticker="MOUTAI", shares_outstanding=1_256.0, data_source="mock",
+        history=[
+            _yd(2020, 13181, 12121, 9100,  9300,  6486,  29000, 320, 16800, 23000, 7137, 264, 200,  4000),
+            _yd(2021, 15208, 13991, 10650, 10870, 7292,  34000, 360, 19500, 27000, 7747, 304, 220,  4800),
+            _yd(2022, 17236, 15897, 12100, 12330, 8708,  39500, 400, 22500, 31500, 9054, 345, 230,  5500),
+            _yd(2023, 20514, 18933, 14550, 14800, 10375, 47000, 410, 26500, 37000, 11000, 410, 250, 6500),
+            _yd(2024, 24181, 22321, 17300, 17580, 12028, 55500, 425, 31000, 43500, 13000, 484, 280, 7700),
+        ],
+    ),
+    # 腾讯：互联网平台，订阅+广告+游戏。RMB→USD/7.2
+    "TENCENT": FinancialStatements(
+        ticker="TENCENT", shares_outstanding=9_300.0, data_source="mock",
+        history=[
+            _yd(2020, 66958, 31870, 22600, 26000, 22194, 187000, 25000, 26500, 110000, 25500, 4870, 3400, 11000),
+            _yd(2021, 77792, 33950, 30700, 35000, 31222, 215000, 35000, 24500, 124000, 32700, 5460, 4300, 12500),
+            _yd(2022, 77028, 33330, 26100, 31200, 26139, 212000, 36000, 23000, 130000, 32500, 4622, 5100, 11800),
+            _yd(2023, 84583, 40990, 32600, 38400, 16000, 220000, 35500, 24500, 138000, 31500, 5075, 5800, 12800),
+            _yd(2024, 91708, 47650, 36500, 42700, 26958, 235000, 36000, 27500, 152000, 38400, 5500, 6200, 14000),
+        ],
+    ),
+    # 工商银行：DCF 中 total_debt 只算批发融资（bonds + interbank），不算存款。
+    # cash 含 央行准备金。RMB→USD/7.2
+    "ICBC": FinancialStatements(
+        ticker="ICBC", shares_outstanding=356_406.0, data_source="mock",
+        history=[
+            _yd(2020, 122597, 48000, 55000, 56000, 43875, 4750000, 60000, 350000, 380000, 55000, 12000, 5000, 0),
+            _yd(2021, 130319, 51000, 60500, 61500, 48375, 5100000, 65000, 380000, 410000, 60000, 12500, 5300, 0),
+            _yd(2022, 127389, 50800, 62500, 63500, 50069, 5400000, 68000, 410000, 440000, 62000, 13000, 5500, 0),
+            _yd(2023, 116903, 47200, 63000, 64000, 50708, 5650000, 70000, 440000, 470000, 63000, 13500, 5800, 0),
+            _yd(2024, 114194, 46100, 63500, 64500, 50819, 5900000, 72000, 470000, 500000, 64000, 14000, 6000, 0),
+        ],
+    ),
+    # 宁德时代：动力电池龙头，资本开支极重。RMB→USD/7.2
+    "CATL": FinancialStatements(
+        ticker="CATL", shares_outstanding=4_400.0, data_source="mock",
+        history=[
+            _yd(2020, 6986,  1900, 950,   1500, 778,   10800, 1500, 3500, 4500, 1850, 550,  580,  650),
+            _yd(2021, 18111, 4500, 2750,  3700, 2208,  25000, 4200, 7800, 8400, 5300, 1750, 950,  1700),
+            _yd(2022, 45639, 9200, 5400,  7400, 4264,  45500, 9500, 16500, 13500, 8700, 4200, 2000, 4300),
+            _yd(2023, 55681, 13100, 7800, 10800, 6125, 53000, 11200, 19500, 18000, 12300, 4800, 3000, 5300),
+            _yd(2024, 50278, 12550, 8800, 12000, 7042, 56500, 11800, 22000, 21500, 13500, 4500, 3200, 4800),
+        ],
+    ),
+    # 比亚迪：电动车 + 电池。td 只算有息负债；Capex 取经常性水平（去掉扩产期 one-off）。RMB→USD/7.2
+    "BYD": FinancialStatements(
+        ticker="BYD", shares_outstanding=2_910.0, data_source="mock",
+        history=[
+            _yd(2020, 21750, 4350, 1900,  3050, 583,  29000, 3500, 1800, 7400, 3100, 1100, 1150, 2200),
+            _yd(2021, 30014, 4050, 2700,  4300, 417,  41500, 5500, 2500, 8200, 4500, 2100, 1600, 3000),
+            _yd(2022, 58903, 10000, 6400, 9200, 2306, 65500, 7000, 6900, 10500, 19400, 4500, 2800, 5900),
+            _yd(2023, 83653, 16800, 11500, 15800, 4167, 88500, 8500, 11500, 14800, 23800, 6000, 4300, 8400),
+            _yd(2024, 107931, 21500, 16800, 22800, 5597, 106000, 9500, 15500, 20000, 27000, 7500, 6000, 10800),
+        ],
+    ),
+    # 中国平安：DCF 中 td 只算有息负债（保单准备金不算）。RMB→USD/7.2
+    "PINGAN": FinancialStatements(
+        ticker="PINGAN", shares_outstanding=18_210.0, data_source="mock",
+        history=[
+            _yd(2020, 169250, 67000, 26500, 28500, 19875, 1280000, 28000, 75000, 110000, 30000, 3400, 2000, 0),
+            _yd(2021, 163944, 64500, 19200, 21500, 14111, 1330000, 30000, 78000, 120000, 23000, 3300, 2300, 0),
+            _yd(2022, 154250, 60500, 15800, 18000, 11639, 1380000, 32000, 80000, 130000, 19500, 3100, 2200, 0),
+            _yd(2023, 168472, 65500, 16200, 18800, 11903, 1450000, 34000, 85000, 135000, 20000, 3300, 2600, 0),
+            _yd(2024, 174819, 68500, 23800, 26500, 17583, 1530000, 36000, 92000, 145000, 28500, 3600, 2700, 0),
+        ],
+    ),
+    # 阿里巴巴：电商 + 云。财年 4-3 月制。RMB→USD/7.2
+    "BABA": FinancialStatements(
+        ticker="BABA", shares_outstanding=2_420.0, data_source="mock",
+        history=[
+            _yd(2021, 99625,  41600, 25700, 32000, 20889, 250000, 22000, 70000, 145000, 32500, 6800, 6300, 12500),
+            _yd(2022, 118486, 43500, 11100, 18000, 8597,  264000, 25500, 67000, 145000, 26500, 9200, 6900, 13500),
+            _yd(2023, 120653, 44900, 13500, 20500, 10111, 270000, 27500, 70000, 152000, 27500, 7100, 7000, 14000),
+            _yd(2024, 130722, 49500, 14300, 22000, 11069, 286000, 30000, 80000, 165000, 30500, 7800, 7700, 15000),
+            _yd(2025, 138375, 53300, 22500, 30500, 17278, 305000, 31000, 84000, 178000, 35000, 8200, 8000, 15800),
+        ],
+    ),
+    # 恒瑞医药：创新药龙头，高研发投入。RMB→USD/7.2
+    "HENGRUI": FinancialStatements(
+        ticker="HENGRUI", shares_outstanding=6_380.0, data_source="mock",
+        history=[
+            _yd(2020, 3847, 3370, 1130, 1290, 875,  4700, 90, 1180, 4100, 970,  150, 160, 800),
+            _yd(2021, 3597, 3120, 820,  990,  625,  4900, 95, 1220, 4350, 700,  170, 170, 750),
+            _yd(2022, 2958, 2540, 720,  900,  542,  4950, 90, 1280, 4500, 620,  155, 180, 650),
+            _yd(2023, 3167, 2710, 800,  990,  597,  5100, 92, 1380, 4750, 680,  165, 190, 700),
+            _yd(2024, 3875, 3340, 1120, 1330, 875,  5400, 95, 1500, 5050, 920,  175, 210, 850),
         ],
     ),
 }
